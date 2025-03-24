@@ -1,8 +1,15 @@
 {
   "name": "LoGerp",
   "displayName": "LoGerp",
-  "description": "",
+  "description": "Grep and Highlight Tool to assist to check logs",
   "version": "0.0.1",
+  "icon": "media/icon.png",
+  "publisher": "woool",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wooolwooolwoool/LoGrep.git"
+  },
+  "license": "GPL-2.0-only",
   "engines": {
     "vscode": "^1.98.0"
   },
@@ -18,7 +25,7 @@
       "activitybar": [
         {
           "id": "grepSidebar",
-          "title": "Grep",
+          "title": "Grep & Highlight",
           "icon": "media/icon.svg"
         }
       ]

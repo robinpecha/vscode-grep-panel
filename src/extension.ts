@@ -97,7 +97,7 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
     for (let line = 0; line < doc.lineCount; line++) {
       const text = doc.lineAt(line).text;
       if (grepWords.some(word => text.includes(word))) {
-        results.push(`${line + 1}: ${text}`);
+        results.push(`${String(line + 1).padStart(8, ' ')}: ${text}`);
       }
     }
 
