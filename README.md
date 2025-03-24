@@ -1,8 +1,10 @@
-# LoGrep README
+# Grep and Highlight README
 
 ## Features
 
 Grep and Highlight Log.
+
+![Sample Image](./resources/image.png)
 
 ### Grep
 
