@@ -137,18 +137,18 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
             pre {
               white-space: pre-wrap;
               word-wrap: break-word;
-              font-size: 16px; /* 初期フォントサイズ */
+              font-size: 14px; /* 初期フォントサイズ */
             }
             button {
-                margin: 5px;
+                margin: 2px;
                 padding: 2px;
-                font-size: 16px;
+                font-size: 14px;
             }
           </style>
         </head>
         <body>
-          <button onclick="resizeText(2)">拡大</button>
-          <button onclick="resizeText(-2)">縮小</button>
+          <button onclick="resizeText(2)">Zoom In</button>
+          <button onclick="resizeText(-2)">Zoom Out</button>
           <pre id=text>${highlightedResults}</pre>
           <script>
               function resizeText(step) {
@@ -338,9 +338,9 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
             const colors = ${Colors}
 
             function saveSettings_current() {
-              const grepWords = Array.from(document.getElementsByClassName('grepInput')).map(input => input.value.trim()).filter(word => word);
+              const grepWords = Array.from(document.getElementsByClassName('grepInput')).map(input => input.value).filter(word => word);
               const searchWords = Array.from(document.getElementsByClassName('searchInput')).map(input => ({
-                word: input.value.trim(),
+                word: input.value,
                 color: input.nextElementSibling.style.backgroundColor
               })).filter(item => item.word);
               vscode.postMessage({ command: 'saveSettings_current', grepWords, searchWords });
@@ -369,7 +369,7 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
               div.className = 'search-word';
               if (word != "") {
                 div.innerHTML = \`
-                  <input type="text" class="searchInput" placeholder="Enter search word" value=\${word} />
+                  <input type="text" class="searchInput" placeholder="Enter search word" value="\${word}" />
                   <div class="color-box" style="background-color: \${color}"></div>
                 \`;
               } else {
@@ -410,9 +410,9 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
             }
 
             function startGrep() {
-              const grepWords = Array.from(document.getElementsByClassName('grepInput')).map(input => input.value.trim()).filter(word => word);
+              const grepWords = Array.from(document.getElementsByClassName('grepInput')).map(input => input.value).filter(word => word);
               const searchWords = Array.from(document.getElementsByClassName('searchInput')).map((input, index) => ({
-                word: input.value.trim(),
+                word: input.value,
                 color: input.nextElementSibling.style.backgroundColor
               })).filter(item => item.word);
               mainbuttun = document.getElementById('MainButtun');
@@ -428,9 +428,9 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
             function saveSettings() {
               const settingName = document.getElementById('settingName').value;
               if (!settingName) return;
-              const grepWords = Array.from(document.getElementsByClassName('grepInput')).map(input => input.value.trim()).filter(word => word);
+              const grepWords = Array.from(document.getElementsByClassName('grepInput')).map(input => input.value).filter(word => word);
               const searchWords = Array.from(document.getElementsByClassName('searchInput')).map(input => ({
-                word: input.value.trim(),
+                word: input.value,
                 color: input.nextElementSibling.style.backgroundColor
               })).filter(item => item.word);
               vscode.postMessage({ command: 'saveSettings', name: settingName, grepWords, searchWords });
@@ -465,9 +465,9 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
 
             function exportSettings() {
                 try {
-                  const grepWords = Array.from(document.getElementsByClassName('grepInput')).map(input => input.value.trim()).filter(word => word);
+                  const grepWords = Array.from(document.getElementsByClassName('grepInput')).map(input => input.value).filter(word => word);
                   const searchWords = Array.from(document.getElementsByClassName('searchInput')).map((input, index) => ({
-                    word: input.value.trim(),
+                    word: input.value,
                     color: input.nextElementSibling.style.backgroundColor
                   })).filter(item => item.word);
                   jsonObject = { "Grep": grepWords, "Highlight": searchWords };
@@ -514,11 +514,11 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
                 mainbuttun.textContent = 'Grep & Highlight';
               } else if (message.command === 'requestState') {
                 const grepWords = Array.from(document.getElementsByClassName('grepInput'))
-                  .map(input => input.value.trim())
+                  .map(input => input.value)
                   .filter(word => word);
                 const searchWords = Array.from(document.getElementsByClassName('searchInput'))
                   .map(input => ({
-                    word: input.value.trim(),
+                    word: input.value,
                     color: input.nextElementSibling.style.backgroundColor
                   }))
                   .filter(item => item.word);
