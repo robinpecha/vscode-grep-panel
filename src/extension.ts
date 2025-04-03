@@ -97,7 +97,8 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
     for (let line = 0; line < doc.lineCount; line++) {
       const text = doc.lineAt(line).text;
       if (grepWords.some(word => text.includes(word))) {
-        results.push(`${String(line + 1).padStart(8, ' ')}: ${text}`);
+        //results.push(`${String(line + 1).padStart(8, ' ')}: ${text}`);
+        results.push(`${text}`);
       }
     }
 
@@ -144,15 +145,53 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
                 padding: 2px;
                 font-size: 14px;
             }
+
+            .container {
+                width: 100%; /* 親要素にフィット */
+                font-family: monospace;
+                white-space: pre; /* 折り返し無効 */
+                overflow-x: auto; /* 横スクロール有効 */
+                overflow-y: hidden;
+                box-sizing: border-box;
+            }
+
+            /* 折り返し有効時のスタイル */
+            .wrap {
+                white-space: pre-wrap; /* 折り返しを有効化 */
+                overflow-x: hidden; /* 横スクロールを無効化 */
+                overflow-y: auto;
+            }
+
+            /* チェックボックスをスクロールしても上部に固定 */
+            .sticky {
+                position: sticky;
+                top: 0;
+                padding: 0px;
+                border-bottom: 1px solid var(--vscode-editor-foreground);
+                background-color: var(--vscode-editor-background);
+                z-index: 10;
+            }
           </style>
         </head>
         <body>
-          <button onclick="resizeText(2)">Zoom In</button>
-          <button onclick="resizeText(-2)">Zoom Out</button>
-          <pre id=text>${highlightedResults}</pre>
+          <div class="sticky">
+            <button onclick="resizeText(2)">Zoom In</button>
+            <button onclick="resizeText(-2)">Zoom Out</button>
+            <label>
+                <input type="checkbox" id="wrapToggle" />
+                Enable wrap
+            </label>
+            <!--
+            <input type="text" id="searchBox" placeholder="Search.." />
+            <button id="searchButton">Search</button>
+            <button id="prevButton">◀</button>
+            <button id="nextButton">▶</button>
+            -->
+          </div>
+          <div id="textContainer" class="container">${highlightedResults}</div>
           <script>
               function resizeText(step) {
-                  const textElement = document.getElementById('text');
+                  const textElement = document.getElementById('textContainer');
                   let currentSize = parseFloat(window.getComputedStyle(textElement).fontSize);
                   let newSize = currentSize + step;
 
@@ -164,6 +203,79 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
 
                   textElement.style.fontSize = \`\${newSize}px\`;
               };
+              document.getElementById('wrapToggle').addEventListener('change', function(event) {
+                  const container = document.getElementById('textContainer');
+                  if (event.target.checked) {
+                      container.classList.add('wrap');
+                  } else {
+                      container.classList.remove('wrap');
+                  }
+              });
+
+              // // 検索実行
+              // function searchText() {
+              //     const container = document.getElementById('textContainer');
+              //     const searchText = document.getElementById('searchBox').value;
+              //     if (!searchText) return;
+
+              //     // 既存のハイライトをクリア
+              //     container.innerHTML = container.innerHTML.replace(/<span class="highlight.*?">(.*?)<\/span>/g, '$1');
+
+              //     searchResults = [];
+              //     searchIndex = 0;
+
+              //     // 検索してマッチ箇所をハイライト
+              //     const regex = new RegExp(\`(\${searchText})\`, 'gi');
+              //     container.innerHTML = container.innerHTML.replace(regex, (match) => {
+              //         searchResults.push(match);
+              //         return \`<span class="highlight">\${match}</span>\`;
+              //     });
+
+              //     if (searchResults.length > 0) {
+              //         jumpToResult(0); // 最初の検索結果にジャンプ
+              //     }
+              // }
+
+              // // ジャンプ処理
+              // function jumpToResult(index) {
+              //     const highlights = document.querySelectorAll('.highlight');
+              //     if (highlights.length === 0) return;
+
+              //     // すべてのハイライトの強調解除
+              //     highlights.forEach((el) => el.classList.remove('active-highlight'));
+
+              //     if (index < 0) index = highlights.length - 1;
+              //     if (index >= highlights.length) index = 0;
+
+              //     searchIndex = index;
+              //     const target = highlights[searchIndex];
+
+              //     // アクティブな検索結果を強調
+              //     target.classList.add('active-highlight');
+              //     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // }
+
+              // // 次へボタン
+              // document.getElementById('nextButton').addEventListener('click', () => {
+              //     if (searchResults.length > 0) {
+              //         jumpToResult(searchIndex + 1);
+              //     }
+              // });
+
+              // // 前へボタン
+              // document.getElementById('prevButton').addEventListener('click', () => {
+              //     if (searchResults.length > 0) {
+              //         jumpToResult(searchIndex - 1);
+              //     }
+              // });
+
+              // // 検索ボタンクリック or Enterで検索実行
+              // document.getElementById('searchButton').addEventListener('click', searchText);
+              // document.getElementById('searchBox').addEventListener('keydown', (event) => {
+              //     if (event.key === 'Enter') {
+              //         searchText();
+              //     }
+              // });
           </script>
         </body>
       </html>
@@ -290,6 +402,15 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
               justify-content: center;
               margin-top: 5px;
             }
+
+            #colorList:focus {
+                background-color: inherit; /* 選択中の背景色を変えない */
+                color: inherit;
+            }
+            #colorList option:focus {
+                background-color: inherit; /* ドロップダウンの背景色 */
+                color: black; /* 文字色 */
+            }
           </style>
         </head>
         <body>
@@ -302,11 +423,16 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
           </div>
           <h3>Highlight</h3>
           <div id="searchWordsContainer"></div>
-          <div class="center-button">
-            <button-sub onclick="addSearchWord()">+</button>
+          <div class="button">
+            <!-- <button-sub onclick="addSearchWord()">+</button> -->
+            <select id="colorList"></select>
           </div>
           <div class="center-button">
             <button-main onclick="startGrep()" id="MainButtun">Grep & Highlight</button>
+          </div>
+          <div class="center-button">
+            <button onclick="clearAll()" id="ClearButtun">Clear All</button>
+            <button onclick="clearBrank()" id="ClearButtun">Clear Brank</button>
           </div>
 
           <hr>
@@ -446,21 +572,43 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
               input.value = settingName;
             }
 
+            function clearAll() {
+              const grepContainer = document.getElementById('grepContainer');
+              grepContainer.innerHTML = '';
+              const searchContainer = document.getElementById('searchWordsContainer');
+              searchContainer.innerHTML = '';
+            }
+
+            function clearBrank() {
+              const grepWords = Array.from(document.getElementsByClassName('grepInput')).map(input => input.value).filter(word => word);
+              const searchWords = Array.from(document.getElementsByClassName('searchInput')).map((input, index) => ({
+                word: input.value,
+                color: input.nextElementSibling.style.backgroundColor
+              })).filter(item => item.word);
+              const grepContainer = document.getElementById('grepContainer');
+              grepContainer.innerHTML = '';
+              const searchContainer = document.getElementById('searchWordsContainer');
+              searchContainer.innerHTML = '';
+
+              grepWords.forEach(word => addGrepWord_load(word));
+              searchWords.forEach(item => addSearchWord_load(item.word, item.color));
+            }
+
             function importSettings() {
-                try {
-                  const jsonInput = document.getElementById('importSettingsinput').value;
+              try {
+                const jsonInput = document.getElementById('importSettingsinput').value;
 
-                  const json = JSON.parse(jsonInput);
-                  const grepContainer = document.getElementById('grepContainer');
-                  grepContainer.innerHTML = '';
-                  json["Grep"].forEach(word => addGrepWord_load(word));
+                const json = JSON.parse(jsonInput);
+                const grepContainer = document.getElementById('grepContainer');
+                grepContainer.innerHTML = '';
+                json["Grep"].forEach(word => addGrepWord_load(word));
 
-                  const searchContainer = document.getElementById('searchWordsContainer');
-                  searchContainer.innerHTML = '';
-                  json["Highlight"].forEach(item => addSearchWord_load(item.word, item.color));
+                const searchContainer = document.getElementById('searchWordsContainer');
+                searchContainer.innerHTML = '';
+                json["Highlight"].forEach(item => addSearchWord_load(item.word, item.color));
 
-                } catch (error) {
-                }
+              } catch (error) {
+              }
             }
 
             function exportSettings() {
@@ -530,8 +678,31 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
               }
             });
 
+            function addColorOptions() {
+              const colorselect = document.getElementById("colorList");
+              // 色のリストを <select> に追加
+              colors.forEach(color => {
+                  const option = document.createElement("option");
+                  option.value = color;
+                  option.textContent = color;
+                  option.style.color = color;
+                  option.style.backgroundColor = color;
+                  colorselect.appendChild(option);
+              });
+
+              // プルダウン選択時にも色を変更
+              colorselect.addEventListener("change", function(){
+                var index = this.selectedIndex;
+                addSearchWord_load("", colors[ index ]);
+                this.style.backgroundColor = colors[ index ];
+              });
+              colorselect.style.backgroundColor = colors[0];
+              colorselect.style.color = "white";
+            }
+
             function init() {
               addSearchWord();
+              addColorOptions();
             }
             init();
           </script>
