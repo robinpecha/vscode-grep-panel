@@ -32,12 +32,13 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this.getHtml();
     this.getSettingsList(webviewView.webview);
-    const lastState = this.context.workspaceState.get<{ grepWords: string[], searchWords: { word: string; color: string }[] }>('lastState');
+    const lastState = this.context.workspaceState.get<{ grepWords: string[], searchWords: { word: string; color: string }[], settingName: string }>('lastState');
     if (lastState) {
       webviewView.webview.postMessage({
         command: 'loadSettings',
         grepWords: lastState.grepWords,
-        searchWords: lastState.searchWords
+        searchWords: lastState.searchWords,
+        settingName: lastState.settingName
       });
     }
 
@@ -61,15 +62,15 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
       } else if (message.command === 'Logger') {
         this.Loggger(webviewView.webview, message.msg);
       } else if (message.command === 'saveSettings_current') {
-        this.saveStateFromWebview(message.grepWords, message.searchWords, webviewView.webview);
+        this.saveStateFromWebview(message.grepWords, message.searchWords, message.settingName, webviewView.webview);
       }
       webviewView.webview.postMessage({ command: 'Complete' });
     });
   }
 
   // state を保存するメソッド
-  private async saveStateFromWebview(grepWords: string[], searchWords: { word: string; color: string }[], webview: vscode.Webview) {
-    const response = {grepWords: grepWords, searchWords: searchWords};
+  private async saveStateFromWebview(grepWords: string[], searchWords: { word: string; color: string }[], settingName: string, webview: vscode.Webview) {
+    const response = {grepWords: grepWords, searchWords: searchWords, settingName: settingName};
     if (response) {
       this.context.workspaceState.update('lastState', response);
       console.log('State saved:', response);
@@ -77,9 +78,9 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
   }
 
   private async restoreState(webview: vscode.Webview) {
-    const state = this.context.workspaceState.get<{ grepWords: string[], searchWords: { word: string; color: string }[] }>('lastState');
+    const state = this.context.workspaceState.get<{ grepWords: string[], searchWords: { word: string; color: string }[], settingName: string}>('lastState');
     if (state) {
-      webview.postMessage({ command: 'loadSettings', grepWords: state.grepWords, searchWords: state.searchWords });
+      webview.postMessage({ command: 'loadSettings', grepWords: state.grepWords, searchWords: state.searchWords, settingName: state.settingName });
       console.log('State restored:', state);
     }
   }
@@ -122,8 +123,9 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
         const regex = new RegExp(`(${word})`, 'gi');
         line = line.replace(regex, `<span style="background-color: ${color}; font-weight: bold;">$1</span>`);
       });
+      line = `<div class="log-line">${line}</div>`;
       return line;
-    }).join('<br>');
+    }).join('');
 
     panel.webview.html = `
       <!DOCTYPE html>
@@ -155,6 +157,23 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
                 box-sizing: border-box;
             }
 
+            .log-line {
+              display: flex;
+              align-items: center;
+              padding: 1px 0px;
+              cursor: text;
+            }
+
+            .log-line.selected {
+              background-color: #cce5ff;
+            }
+
+            .log-text {
+              margin-left: 8px;
+              white-space: pre;
+              flex: 1;
+            }
+
             /* 折り返し有効時のスタイル */
             .wrap {
                 white-space: pre-wrap; /* 折り返しを有効化 */
@@ -181,11 +200,16 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
                 <input type="checkbox" id="wrapToggle" />
                 Enable wrap
             </label>
+            <label>
+                <input type="checkbox" id="trimToggle" />
+                Trim mode
+            </label>
+            <button onclick="deleteSelected()" id="removelinebuttun" disabled=true>Remove lines</button>
             <!--
             <input type="text" id="searchBox" placeholder="Search.." />
             <button id="searchButton">Search</button>
-            <button id="prevButton">◀</button>
-            <button id="nextButton">▶</button>
+            <button id="prevButton">▲</button>
+            <button id="nextButton">▼</button>
             -->
           </div>
           <div id="textContainer" class="container">${highlightedResults}</div>
@@ -212,6 +236,70 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
                   }
               });
 
+              const logContainer = document.getElementById("textContainer");
+              let lastClicked = null;
+              let trimEnabled = false;
+
+              document.getElementById('trimToggle').addEventListener('change', function(event) {
+                const removelinebuttun = document.getElementById('removelinebuttun');
+                if (event.target.checked) {
+                    trimEnabled = true;
+                    removelinebuttun.disabled = false;
+                    const logContainer = document.getElementById("textContainer");
+                    logContainer.style.userSelect = "none";
+                    logContainer.style.cursor = "pointer";
+                } else {
+                    trimEnabled = false;
+                    removelinebuttun.disabled = true;
+                    const selected = document.querySelectorAll(".log-line.selected");
+                    selected.forEach(line => {
+                      line.classList.remove("selected");
+                      const checkbox = line.querySelector(".log-check");
+                      if (checkbox) {
+                        checkbox.checked = false;
+                      }
+                    });
+                    lastClicked = null;
+                    const logContainer = document.getElementById("textContainer");
+                    logContainer.style.userSelect = "auto";
+                    logContainer.style.cursor = "auto";
+                }
+              });
+
+              logContainer.addEventListener("click", (e) => {
+                if (trimEnabled) {
+                  const line = e.target.closest(".log-line");
+                  if (!line || e.target.tagName === 'INPUT') return;
+
+                  const lines = Array.from(logContainer.children);
+                  const clickedIndex = lines.indexOf(line);
+
+                  if (e.shiftKey && lastClicked !== null) {
+                    const lastIndex = lines.indexOf(lastClicked);
+                    const [start, end] = [clickedIndex, lastIndex].sort((a, b) => a - b);
+                    for (let i = start; i <= end; i++) {
+                      selectLine(lines[i], true);
+                    }
+                  } else {
+                    const isSelected = line.classList.contains("selected");
+                    selectLine(line, !isSelected);
+                  }
+                  lastClicked = line;
+                }
+              });
+
+              function selectLine(line, selected) {
+                const checkbox = line.querySelector(".log-check");
+                line.classList.toggle("selected", selected);
+                checkbox.checked = selected;
+              }
+
+              function deleteSelected() {
+                const selected = document.querySelectorAll(".log-line.selected");
+                selected.forEach(line => line.remove());
+                lastClicked = null;
+              }
+
               // // 検索実行
               // function searchText() {
               //     const container = document.getElementById('textContainer');
@@ -219,7 +307,7 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
               //     if (!searchText) return;
 
               //     // 既存のハイライトをクリア
-              //     container.innerHTML = container.innerHTML.replace(/<span class="highlight.*?">(.*?)<\/span>/g, '$1');
+              //     container.innerHTML = container.innerHTML.replace(/<span class="highlight.*?">(.*?)<\\/span>/g, '$1');
 
               //     searchResults = [];
               //     searchIndex = 0;
@@ -294,7 +382,7 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
   private async loadSettings(name: string, webview: vscode.Webview) {
     const config = vscode.workspace.getConfiguration('grepExtension').get<{ [key: string]: any }>('settings');
     if (config && config[name]) {
-      webview.postMessage({ command: 'loadSettings', grepWords: config[name].grepWords, searchWords: config[name].searchWords });
+      webview.postMessage({ command: 'loadSettings', grepWords: config[name].grepWords, searchWords: config[name].searchWords, settingName: name });
     } else {
       vscode.window.showErrorMessage(`No settings found for '${name}'`);
     }
@@ -333,8 +421,8 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
   }
 
   private getHtml(): string {
-    const lightColors = "['yellow', 'lime', 'red', 'aqua', 'blue', 'fuchsia', 'silver']";
-    const darkColors = "['olive', 'green', 'maroon', 'purple', 'navy', 'teal', 'gray']";
+    const lightColors = "['none', 'lightyellow', 'khaki', 'gold', 'lightsalmon', 'salmon', 'lightcoral', 'pink', 'hotpink', 'lightgreen', 'lime', 'aquamarine', 'skyblue', 'dodgerblue', 'fuchsia']";
+    const darkColors = "['none', 'dimgray', 'slategray', 'darkolivegreen', 'olive', 'darkgreen', 'seagreen', 'teal', 'cadetblue', 'navy', 'indigo', 'purple', 'darkred', 'firebrick',  'chocolate', 'sienna', 'darkgoldenrod']";
     const Colors = vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark
       ? darkColors
       : lightColors;
@@ -469,7 +557,8 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
                 word: input.value,
                 color: input.nextElementSibling.style.backgroundColor
               })).filter(item => item.word);
-              vscode.postMessage({ command: 'saveSettings_current', grepWords, searchWords });
+              const settingName = document.getElementById('settingName').value;
+              vscode.postMessage({ command: 'saveSettings_current', grepWords, searchWords, settingName });
             }
 
             function addGrepWord_load(word) {
@@ -639,6 +728,9 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
                 searchContainer.innerHTML = '';
                 message.searchWords.forEach(item => addSearchWord_load(item.word, item.color));
 
+                const settingName = document.getElementById('settingName');
+                settingName.value = message.settingName;
+
                 loadbuttun = document.getElementById('LoadButtun');
                 loadbuttun.textContent = 'Load';
                 loadbuttun.disabled = false;
@@ -685,8 +777,14 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
                   const option = document.createElement("option");
                   option.value = color;
                   option.textContent = color;
-                  option.style.color = color;
-                  option.style.backgroundColor = color;
+                  if (color === "none") {
+                    option.textContent = "Select color";
+                    option.style.color = "black";
+                    option.style.backgroundColor = "white";
+                  } else {
+                    option.style.color = color;
+                    option.style.backgroundColor = color;
+                  }
                   colorselect.appendChild(option);
               });
 
@@ -695,8 +793,9 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
                 var index = this.selectedIndex;
                 addSearchWord_load("", colors[ index ]);
                 this.style.backgroundColor = colors[ index ];
+                this.value = colors[0];
               });
-              colorselect.style.backgroundColor = colors[0];
+              colorselect.style.backgroundColor = "black";
               colorselect.style.color = "white";
             }
 
