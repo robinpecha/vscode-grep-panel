@@ -254,10 +254,6 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
                     const selected = document.querySelectorAll(".log-line.selected");
                     selected.forEach(line => {
                       line.classList.remove("selected");
-                      const checkbox = line.querySelector(".log-check");
-                      if (checkbox) {
-                        checkbox.checked = false;
-                      }
                     });
                     lastClicked = null;
                     const logContainer = document.getElementById("textContainer");
@@ -289,9 +285,7 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
               });
 
               function selectLine(line, selected) {
-                const checkbox = line.querySelector(".log-check");
                 line.classList.toggle("selected", selected);
-                checkbox.checked = selected;
               }
 
               function deleteSelected() {
