@@ -209,11 +209,17 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
             <input type="text" id="searchBox" placeholder="Search.." />
             <button id="searchButton">Search</button>
             <button id="prevButton">▲</button>
-            <button id="nextButton">▼</button>
-            -->
+            <button id="nextButton">▼</button> -->
+
+            <!-- <input type="text" id="debuglog" placeholder="" /> -->
           </div>
           <div id="textContainer" class="container">${highlightedResults}</div>
           <script>
+              function printdebuglog(log) {
+                  const textElement = document.getElementById('debuglog');
+                  if (textElement) {textElement.value = String(log);}
+              }
+
               function resizeText(step) {
                   const textElement = document.getElementById('textContainer');
                   let currentSize = parseFloat(window.getComputedStyle(textElement).fontSize);
@@ -294,70 +300,70 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
                 lastClicked = null;
               }
 
-              // // 検索実行
-              // function searchText() {
-              //     const container = document.getElementById('textContainer');
-              //     const searchText = document.getElementById('searchBox').value;
-              //     if (!searchText) return;
+              // 検索実行
+              function searchText() {
+                  const container = document.getElementById('textContainer');
+                  const searchText = document.getElementById('searchBox').value;
+                  if (!searchText) return;
 
-              //     // 既存のハイライトをクリア
-              //     container.innerHTML = container.innerHTML.replace(/<span class="highlight.*?">(.*?)<\\/span>/g, '$1');
+                  // 既存のハイライトをクリア
+                  container.innerHTML = container.innerHTML.replace(/<pre class="highlight">(.*)<\\/pre>/g, '$1');
 
-              //     searchResults = [];
-              //     searchIndex = 0;
+                  searchResults = [];
+                  searchIndex = 0;
 
-              //     // 検索してマッチ箇所をハイライト
-              //     const regex = new RegExp(\`(\${searchText})\`, 'gi');
-              //     container.innerHTML = container.innerHTML.replace(regex, (match) => {
-              //         searchResults.push(match);
-              //         return \`<span class="highlight">\${match}</span>\`;
-              //     });
+                  // 検索してマッチ箇所をハイライト
+                  const regex = new RegExp(\`(\${searchText})\`, 'gi');
+                  container.innerHTML = container.innerHTML.replace(regex, (match) => {
+                      searchResults.push(match);
+                      return \`<pre class="highlight">\${match}</pre>\`;
+                  });
 
-              //     if (searchResults.length > 0) {
-              //         jumpToResult(0); // 最初の検索結果にジャンプ
-              //     }
-              // }
+                  if (searchResults.length > 0) {
+                      jumpToResult(0); // 最初の検索結果にジャンプ
+                  }
+              }
 
-              // // ジャンプ処理
-              // function jumpToResult(index) {
-              //     const highlights = document.querySelectorAll('.highlight');
-              //     if (highlights.length === 0) return;
+              // ジャンプ処理
+              function jumpToResult(index) {
+                  const highlights = document.querySelectorAll('.highlight');
+                  if (highlights.length === 0) return;
 
-              //     // すべてのハイライトの強調解除
-              //     highlights.forEach((el) => el.classList.remove('active-highlight'));
+                  // すべてのハイライトの強調解除
+                  highlights.forEach((el) => el.classList.remove('active-highlight'));
 
-              //     if (index < 0) index = highlights.length - 1;
-              //     if (index >= highlights.length) index = 0;
+                  if (index < 0) index = highlights.length - 1;
+                  if (index >= highlights.length) index = 0;
 
-              //     searchIndex = index;
-              //     const target = highlights[searchIndex];
+                  searchIndex = index;
+                  const target = highlights[searchIndex];
 
-              //     // アクティブな検索結果を強調
-              //     target.classList.add('active-highlight');
-              //     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              // }
+                  // アクティブな検索結果を強調
+                  target.classList.add('active-highlight');
+                  target.scrollIntoView();
+              }
 
-              // // 次へボタン
-              // document.getElementById('nextButton').addEventListener('click', () => {
-              //     if (searchResults.length > 0) {
-              //         jumpToResult(searchIndex + 1);
-              //     }
-              // });
+              // 次へボタン
+              document.getElementById('nextButton').addEventListener('click', () => {
+                  if (searchResults.length > 0) {
+                      jumpToResult(searchIndex + 1);
+                  }
+              });
 
-              // // 前へボタン
-              // document.getElementById('prevButton').addEventListener('click', () => {
-              //     if (searchResults.length > 0) {
-              //         jumpToResult(searchIndex - 1);
-              //     }
-              // });
+              // 前へボタン
+              document.getElementById('prevButton').addEventListener('click', () => {
+                  if (searchResults.length > 0) {
+                      jumpToResult(searchIndex - 1);
+                  }
+              });
 
-              // // 検索ボタンクリック or Enterで検索実行
-              // document.getElementById('searchButton').addEventListener('click', searchText);
-              // document.getElementById('searchBox').addEventListener('keydown', (event) => {
-              //     if (event.key === 'Enter') {
-              //         searchText();
-              //     }
-              // });
+              // 検索ボタンクリック or Enterで検索実行
+              document.getElementById('searchButton').addEventListener('click', searchText);
+              document.getElementById('searchBox').addEventListener('keydown', (event) => {
+                  if (event.key === 'Enter') {
+                      searchText();
+                  }
+              });
           </script>
         </body>
       </html>
