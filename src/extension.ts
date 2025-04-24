@@ -120,8 +120,8 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
 
     const highlightedResults = results.map(line => {
       searchWords.forEach(({ word, color }) => {
-        const regex = new RegExp(`(${word})`, 'gi');
-        line = line.replace(regex, `<span style="background-color: ${color}; font-weight: bold;">$1</span>`);
+        // const regex = new RegExp(`(${word})`, 'gi');
+        line = line.replace(word, `<span style="background-color: ${color}; font-weight: bold;">${word}</span>`);
       });
       line = `<div class="log-line">${line}</div>`;
       return line;
