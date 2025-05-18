@@ -118,14 +118,43 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
       { enableScripts: true }
     );
 
+    // 1. 色ごとにクラスを生成
+    const colorClassMap = new Map<string, string>();
+    searchWords.forEach(({ color }, idx) => {
+      if (!colorClassMap.has(color)) {
+        colorClassMap.set(color, `highlight-${idx}`);
+      }
+    });
+
+    // 2. 各行に強調spanを埋め込む
     const highlightedResults = results.map(line => {
       searchWords.forEach(({ word, color }) => {
-        // const regex = new RegExp(`(${word})`, 'gi');
-        line = line.replace(word, `<span style="background-color: ${color}; font-weight: bold;">${word}</span>`);
+        const className = colorClassMap.get(color)!;
+        // 正規表現で複数一致対応
+        const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escapedWord, 'g');
+        line = line.replace(regex, `<span class="highlight ${className}">${word}</span>`);
       });
-      line = `<div class="log-line">${line}</div>`;
-      return line;
+      return `<div class="log-line">${line}</div>`;
     }).join('');
+
+    // 3. CSS生成（背景は擬似要素で描画）
+    const highlightCSS = Array.from(colorClassMap.entries()).map(([color, className]) => {
+      return `
+        .${className} {
+          position: relative;
+          display: inline;
+        }
+        .${className}::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-color: ${color};
+          z-index: -1;
+          border-radius: 2px;
+        }
+      `;
+    }).join('\n');
 
     panel.webview.html = `
       <!DOCTYPE html>
@@ -158,7 +187,6 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
             }
 
             .log-line {
-              display: flex;
               align-items: center;
               padding: 1px 0px;
               cursor: text;
@@ -176,9 +204,11 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
 
             /* 折り返し有効時のスタイル */
             .wrap {
-                white-space: pre-wrap; /* 折り返しを有効化 */
-                overflow-x: hidden; /* 横スクロールを無効化 */
-                overflow-y: auto;
+              white-space: pre-wrap; /* 折り返しを有効化 */
+              word-wrap: break-word;
+              word-break: break-all;
+              overflow-x: hidden; /* 横スクロールを無効化 */
+              overflow-y: auto;
             }
 
             /* チェックボックスをスクロールしても上部に固定 */
@@ -190,6 +220,15 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
                 background-color: var(--vscode-editor-background);
                 z-index: 10;
             }
+            .highlight {
+              font-family: inherit;
+              font-size: inherit;
+              line-height: inherit;
+              white-space: inherit;
+              word-break: inherit;
+              overflow-wrap: inherit;
+            }
+            ${highlightCSS}
           </style>
         </head>
         <body>
