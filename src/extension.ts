@@ -104,16 +104,16 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
     }
 
     if (results.length > 0) {
-      await this.showResultsInWebview(results, searchWords);
+      await this.showResultsInWebview(doc.fileName.split("/").slice(-1)[0], results, searchWords);
     } else {
       vscode.window.showInformationMessage('No matches found');
     }
   }
 
-  private async showResultsInWebview(results: string[], searchWords: { word: string; color: string }[]) {
+  private async showResultsInWebview(fileName: string, results: string[], searchWords: { word: string; color: string }[]) {
     const panel = vscode.window.createWebviewPanel(
-      'grepResults',
-      'Grep Results',
+      'grepResult',
+      `Result ${fileName}`,
       vscode.ViewColumn.One,
       { enableScripts: true }
     );
@@ -244,11 +244,13 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
                 Trim mode
             </label>
             <button onclick="deleteSelected()" id="removelinebuttun" disabled=true>Remove lines</button>
-            <!--
-            <input type="text" id="searchBox" placeholder="Search.." />
-            <button id="searchButton">Search</button>
-            <button id="prevButton">▲</button>
-            <button id="nextButton">▼</button> -->
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <input type="text" id="searchBox" placeholder="Search.." />
+              <button id="searchButton">Search</button>
+              <button id="prevButton">▲</button>
+              <button id="nextButton">▼</button>
+              <pre id="serachCount" style="margin: 0;"></pre>
+            </div>
 
             <!-- <input type="text" id="debuglog" placeholder="" /> -->
           </div>
@@ -257,6 +259,13 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
               function printdebuglog(log) {
                   const textElement = document.getElementById('debuglog');
                   if (textElement) {textElement.value = String(log);}
+              }
+              function update_serchcount(count) {
+                  const textElement = document.getElementById('serachCount');
+                  const Matches = document.querySelectorAll('.Match');
+                  if (textElement) {
+                      textElement.textContent = \`\${count}/\${Matches.length}\`;
+                  }
               }
 
               function resizeText(step) {
@@ -345,8 +354,11 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
                   const searchText = document.getElementById('searchBox').value;
                   if (!searchText) return;
 
-                  // 既存のハイライトをクリア
-                  container.innerHTML = container.innerHTML.replace(/<pre class="highlight">(.*)<\\/pre>/g, '$1');
+                  // 検索結果をクリア
+                  const Matches = document.querySelectorAll('.Match');
+                  Matches.forEach(match => {
+                      match.classList.remove('Match');
+                  });
 
                   searchResults = [];
                   searchIndex = 0;
@@ -355,31 +367,27 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
                   const regex = new RegExp(\`(\${searchText})\`, 'gi');
                   container.innerHTML = container.innerHTML.replace(regex, (match) => {
                       searchResults.push(match);
-                      return \`<pre class="highlight">\${match}</pre>\`;
+                      return \`<span class="Match">\${match}</span>\`;
                   });
 
                   if (searchResults.length > 0) {
                       jumpToResult(0); // 最初の検索結果にジャンプ
                   }
+                  update_serchcount(0);
               }
 
               // ジャンプ処理
               function jumpToResult(index) {
-                  const highlights = document.querySelectorAll('.highlight');
-                  if (highlights.length === 0) return;
+                  const Matches = document.querySelectorAll('.Match');
+                  if (Matches.length === 0) return;
 
-                  // すべてのハイライトの強調解除
-                  highlights.forEach((el) => el.classList.remove('active-highlight'));
-
-                  if (index < 0) index = highlights.length - 1;
-                  if (index >= highlights.length) index = 0;
-
+                  if (index < 0) index = Matches.length - 1;
+                  if (index >= Matches.length) index = 0;
                   searchIndex = index;
-                  const target = highlights[searchIndex];
 
-                  // アクティブな検索結果を強調
-                  target.classList.add('active-highlight');
+                  const target = Matches[searchIndex];
                   target.scrollIntoView();
+                  update_serchcount(searchIndex + 1);
               }
 
               // 次へボタン
@@ -559,7 +567,7 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
           </div>
           <div class="center-button">
             <button onclick="clearAll()" id="ClearButtun">Clear All</button>
-            <button onclick="clearBrank()" id="ClearButtun">Clear Brank</button>
+            <button onclick="clearBlank()" id="ClearButtun">Clear Blank</button>
           </div>
 
           <hr>
@@ -707,7 +715,7 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
               searchContainer.innerHTML = '';
             }
 
-            function clearBrank() {
+            function clearBlank() {
               const grepWords = Array.from(document.getElementsByClassName('grepInput')).map(input => input.value).filter(word => word);
               const searchWords = Array.from(document.getElementsByClassName('searchInput')).map((input, index) => ({
                 word: input.value,
