@@ -421,15 +421,48 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
     const config = vscode.workspace.getConfiguration('grepExtension');
     const currentSettings = config.get<{ [key: string]: any }>('settings') || {};
     currentSettings[name] = { grepWords, searchWords };
-    await config.update('settings', currentSettings, vscode.ConfigurationTarget.Global);
-    vscode.window.showInformationMessage(`Settings '${name}' saved`);
+
+    try {
+      await config.update('settings', currentSettings, vscode.ConfigurationTarget.Global);
+      vscode.window.showInformationMessage(`Settings '${name}' saved`);
+
+      // backup削除（正常に保存できた場合）
+      await this.context.workspaceState.update('backup', undefined);
+    } catch (error) {
+      vscode.window.showWarningMessage(`Settings '${name}' could not be saved to global settings. Backup saved instead.`);
+
+      // バックアップとして保存
+      const backup = { name, grepWords, searchWords };
+      await this.context.workspaceState.update('backup', backup);
+    }
+
     this.getSettingsList(webview);
   }
 
   private async loadSettings(name: string, webview: vscode.Webview) {
+    // まずバックアップがあるか確認し、あればそちらを優先
+    const backup = this.context.workspaceState.get<{ name: string, grepWords: string[], searchWords: { word: string, color: string }[] }>('backup');
+
+    if (backup && backup.name === name) {
+      vscode.window.showWarningMessage(`Loaded backup settings for '${name}'`);
+      webview.postMessage({
+        command: 'loadSettings',
+        grepWords: backup.grepWords,
+        searchWords: backup.searchWords,
+        settingName: name
+      });
+      return;
+    }
+
+    // 通常の設定を読み込む
     const config = vscode.workspace.getConfiguration('grepExtension').get<{ [key: string]: any }>('settings');
     if (config && config[name]) {
-      webview.postMessage({ command: 'loadSettings', grepWords: config[name].grepWords, searchWords: config[name].searchWords, settingName: name });
+      webview.postMessage({
+        command: 'loadSettings',
+        grepWords: config[name].grepWords,
+        searchWords: config[name].searchWords,
+        settingName: name
+      });
     } else {
       vscode.window.showErrorMessage(`No settings found for '${name}'`);
     }
@@ -457,8 +490,18 @@ class GrepInputViewProvider implements vscode.WebviewViewProvider {
   // 設定名の一覧を取得してWebviewに送信
   private async getSettingsList(webview: vscode.Webview) {
     const config = vscode.workspace.getConfiguration('grepExtension').get<{ [key: string]: any }>('settings') || {};
-    const settings = Object.keys(config);
-    webview.postMessage({ command: 'updateSettingsList', settings });
+    const settings = new Set(Object.keys(config));
+
+    // バックアップの名前があれば追加
+    const backup = this.context.workspaceState.get<{ name: string }>('backup');
+    if (backup?.name) {
+      settings.add(backup.name);
+    }
+
+    webview.postMessage({
+      command: 'updateSettingsList',
+      settings: Array.from(settings)
+    });
   }
 
   private async Loggger(webview: vscode.Webview, msg: string) {
