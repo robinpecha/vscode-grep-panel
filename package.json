@@ -1,8 +1,8 @@
 {
   "name": "grep-sidebar-negation",
-  "displayName": "Grep Sidebar",
+  "displayName": "Grep Sidebar Negation",
   "description": "A VS Code extension for advanced grep search panels.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "icon": "media/icon.png",
   "publisher": "originaly-by-woool",
   "repository": {
