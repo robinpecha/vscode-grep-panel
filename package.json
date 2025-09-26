@@ -4,7 +4,7 @@
   "description": "A VS Code extension for advanced grep search panels.",
   "version": "0.1.1",
   "icon": "media/icon.png",
-  "publisher": "originaly by woool",
+  "publisher": "originaly-by-woool",
   "repository": {
     "type": "git",
     "url": "https://github.com/wooolwooolwoool/LoGrep.git"
