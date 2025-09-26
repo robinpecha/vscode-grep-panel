@@ -1,10 +1,10 @@
 {
-  "name": "grep-panel",
-  "displayName": "Grep Panel",
+  "name": "grep-sidebar",
+  "displayName": "Grep Sidebar",
   "description": "A VS Code extension for advanced grep search panels.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "icon": "media/icon.png",
-  "publisher": "woool",
+  "publisher": "originaly by woool",
   "repository": {
     "type": "git",
     "url": "https://github.com/wooolwooolwoool/LoGrep.git"
