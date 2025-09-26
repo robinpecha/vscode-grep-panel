@@ -12,3 +12,14 @@ body {
     padding: 5px 10px;
     margin-left: 10px;
   }
+.not-toggle {
+    margin-left: 8px;
+    padding: 2px 8px;
+    background: #eee;
+    border: 1px solid #ccc;
+    cursor: pointer;
+}
+.not-toggle:active, .not-toggle[aria-pressed="true"], .not-toggle[data-active="true"] {
+    background: #f88;
+    color: #fff;
+}
