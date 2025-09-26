@@ -1,4 +1,4 @@
-# Grep and Highlight README
+# Grep Panel README
 
 ## Features
 
